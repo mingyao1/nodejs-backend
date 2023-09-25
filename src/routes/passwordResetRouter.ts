@@ -1,7 +1,7 @@
 import express from 'express';
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
-import {prisma} from '../../prisma';
+import { prisma } from '../../prisma';
 
 
 const router = express.Router();
@@ -10,6 +10,15 @@ router.post('/password-reset-link', async (req, res) => {
   const { email } = req.body;
   // todo: write your code here
   // 1. verify if email is in database
+  const user = await prisma.user.findUnique({
+    where: {
+      email: email,
+    },
+  });
+  if (!user) {
+    res.status(404).send({ error: "Couldn't find this email." });
+    return;
+  }
 
   const timestamp = Date.now();
   const currentDate = new Date(timestamp);
@@ -60,14 +69,44 @@ router.post('/password-reset-link', async (req, res) => {
 router.post('/password-reset/confirm', async (req, res) => {
 
   // 1. Find the user by the token
+  const { resetToken, password } = req.body;
+  const user = await prisma.user.findUnique({
+    where: {
+      resetToken: resetToken,
+    }
+  });
+  if (!user) {
+    res.status(404).send({ error: "Couldn't find this user." });
+    return;
+  }
   // 2. Verify that the token hasn't expired
+
+
+  if (!user.resetTokenExpiry || user.resetTokenExpiry < Date.now()) {
+    // I could put this up there I suppose, but whatev
+    res.status(401).send({ error: "Invalid token." });
+  }
+
   // 3. Hash the new password
+  const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
   // 4. Update the user's password in the database
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      password: hashedPassword,
+
+      resetToken: null,
+      resetTokenExpiry: null,
+    }
+    
+  });
+  res.status(200).send({ message: 'Successfully reset password.'})
+
   // 5. Invalidate the token so it can't be used again
   // 6. Send a response to the frontend
-  const { token, password } = req.body;
+  // const { token, password } = req.body;
   // console.log(token, password);
-  
+
   // 1. Find the user by the token
 
   // 2. Verify that the token hasn't expired (assuming you have an expiry date in your DB)
@@ -75,10 +114,9 @@ router.post('/password-reset/confirm', async (req, res) => {
 
 
   // 3. Hash the new password
-  // const hashedPassword = await bcrypt.hash(password, 10);
+  // const hashedPassword = await crypto.Hash(password, 10);
 
   // 4. Update the user's password in the database
-
 
   // 6. Send a response to the frontend
 
