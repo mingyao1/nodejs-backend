@@ -77,5 +77,19 @@ router.post('/import', async (req, res) => {
   }
 });
 
+// Delete all users
+router.delete('/users', async (req, res) => {
+  try {
+    // Delete all users from the database
+    const deleteResponse = await prisma.user.deleteMany();
+  
+    return res.status(200).json({ message: `${deleteResponse.count} users deleted.` });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
 
 export default router;

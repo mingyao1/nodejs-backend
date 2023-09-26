@@ -26,7 +26,7 @@ router.post('/password-reset-link', async (req, res) => {
   console.log(email, currentDate.toLocaleString());
 
   const token = crypto.randomBytes(20).toString('hex');
-  const resetLink = process.env.FRONTEND_URL + `password-reset/${token}`;
+  const resetLink = process.env.FRONTEND_URL + `password-reset/?token=${token}`;
   // Validate the email (make sure it's registered, etc.)
 
   // Create a reset token and expiry date for the user
@@ -70,6 +70,10 @@ router.post('/password-reset/confirm', async (req, res) => {
 
   // 1. Find the user by the token
   const { resetToken, password } = req.body;
+  if (!resetToken) {
+    res.status(401).send({ error: "Please provide a token." });
+    return;
+  }
   const user = await prisma.user.findUnique({
     where: {
       resetToken: resetToken,
