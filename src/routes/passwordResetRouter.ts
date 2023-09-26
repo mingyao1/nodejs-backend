@@ -2,6 +2,7 @@ import express from 'express';
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 import { prisma } from '../../prisma';
+import bcrypt from 'bcrypt'
 
 
 const router = express.Router();
@@ -24,7 +25,6 @@ router.post('/password-reset-link', async (req, res) => {
   const currentDate = new Date(timestamp);
 
   console.log(email, currentDate.toLocaleString());
-
   const token = crypto.randomBytes(20).toString('hex');
   const resetLink = process.env.FRONTEND_URL + `password-reset/${token}`;
   // Validate the email (make sure it's registered, etc.)
@@ -69,7 +69,6 @@ router.post('/password-reset-link', async (req, res) => {
 router.post('/password-reset/confirm', async (req, res) => {
 
   const { token, password } = req.body;
-  console.log(token)
   if (!token) {
     console.log("No token")
     res.status(401).send({ error: "Please provide a token." });
@@ -81,18 +80,16 @@ router.post('/password-reset/confirm', async (req, res) => {
     }
   });
   if (!user) {
-    console.log("Sad!")
     res.status(404).send({ error: "Couldn't find this user." });
     return;
   }
 
 
   if (!user.resetTokenExpiry || user.resetTokenExpiry < Date.now()) {
-    console.log(`token: ${token}`)
     res.status(401).send({ error: "Invalid token." });
   }
+  const hashedPassword = await bcrypt.hash(password, 10);
 
-  const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
   await prisma.user.update({
     where: { id: user.id },
     data: {
