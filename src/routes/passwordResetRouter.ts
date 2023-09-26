@@ -26,7 +26,7 @@ router.post('/password-reset-link', async (req, res) => {
   console.log(email, currentDate.toLocaleString());
 
   const token = crypto.randomBytes(20).toString('hex');
-  const resetLink = process.env.FRONTEND_URL + `password-reset/?token=${token}`;
+  const resetLink = process.env.FRONTEND_URL + `password-reset/${token}`;
   // Validate the email (make sure it's registered, etc.)
 
   // Create a reset token and expiry date for the user
@@ -68,32 +68,31 @@ router.post('/password-reset-link', async (req, res) => {
 
 router.post('/password-reset/confirm', async (req, res) => {
 
-  // 1. Find the user by the token
-  const { resetToken, password } = req.body;
-  if (!resetToken) {
+  const { token, password } = req.body;
+  console.log(token)
+  if (!token) {
+    console.log("No token")
     res.status(401).send({ error: "Please provide a token." });
     return;
   }
   const user = await prisma.user.findUnique({
     where: {
-      resetToken: resetToken,
+      resetToken: token,
     }
   });
   if (!user) {
+    console.log("Sad!")
     res.status(404).send({ error: "Couldn't find this user." });
     return;
   }
-  // 2. Verify that the token hasn't expired
 
 
   if (!user.resetTokenExpiry || user.resetTokenExpiry < Date.now()) {
-    // I could put this up there I suppose, but whatev
+    console.log(`token: ${token}`)
     res.status(401).send({ error: "Invalid token." });
   }
 
-  // 3. Hash the new password
   const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
-  // 4. Update the user's password in the database
   await prisma.user.update({
     where: { id: user.id },
     data: {
@@ -105,24 +104,6 @@ router.post('/password-reset/confirm', async (req, res) => {
     
   });
   res.status(200).send({ message: 'Successfully reset password.'})
-
-  // 5. Invalidate the token so it can't be used again
-  // 6. Send a response to the frontend
-  // const { token, password } = req.body;
-  // console.log(token, password);
-
-  // 1. Find the user by the token
-
-  // 2. Verify that the token hasn't expired (assuming you have an expiry date in your DB)
-  // If you have a resetTokenExpiry field in your User model:
-
-
-  // 3. Hash the new password
-  // const hashedPassword = await crypto.Hash(password, 10);
-
-  // 4. Update the user's password in the database
-
-  // 6. Send a response to the frontend
 
 });
 
